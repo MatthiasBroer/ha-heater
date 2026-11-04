@@ -1,7 +1,7 @@
 set_ready_by:
   target:
     entity:
-      integration: heat_learner
+      integration: heater
       domain: climate
   fields:
     time:
@@ -21,10 +21,10 @@ set_ready_by:
 clear_ready_by:
   target:
     entity:
-      integration: heat_learner
+      integration: heater
       domain: climate
 reset_learning:
   target:
     entity:
-      integration: heat_learner
+      integration: heater
       domain: climate
