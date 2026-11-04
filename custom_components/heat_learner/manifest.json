@@ -1,0 +1,13 @@
+{
+  "domain": "heater",
+  "name": "Heater",
+  "version": "0.1.0",
+  "documentation": "https://github.com/MatthiasBroer/ha-heater",
+  "issue_tracker": "https://github.com/MatthiasBroer/ha-heater/issues",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [],
+  "requirements": [],
+  "iot_class": "calculated",
+  "integration_type": "service"
+}

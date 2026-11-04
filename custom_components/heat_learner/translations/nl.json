@@ -1,0 +1,64 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Heat Learner",
+        "description": "Kies de temperatuursensor van de kamer en de schakelaar van de elektrische verwarming.",
+        "data": {
+          "name": "Naam",
+          "temperature_sensor": "Kamertemperatuursensor",
+          "heater_switch": "Schakelaar van de verwarming",
+          "outdoor_sensor": "Buitentemperatuursensor (optioneel, verbetert het leren)",
+          "window_sensor": "Raam-/deursensor (optioneel, verwarming blijft uit zolang open)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Deze verwarming wordt al door een Heat Learner gebruikt."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Heat Learner opties",
+        "data": {
+          "hysteresis": "Hysterese (verwarming gaat aan zoveel onder de doeltemperatuur)",
+          "min_on_minutes": "Minimale aan-tijd",
+          "min_off_minutes": "Minimale uit-tijd",
+          "eco_temperature": "Eco-temperatuur",
+          "min_temperature": "Minimale doeltemperatuur",
+          "max_temperature": "Maximale doeltemperatuur"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "heating_rate": { "name": "Opwarmsnelheid" },
+      "cooling_rate": { "name": "Afkoelsnelheid" },
+      "time_to_target": { "name": "Tijd tot doeltemperatuur" },
+      "max_reachable": { "name": "Maximaal haalbare temperatuur" },
+      "overshoot": { "name": "Geleerde overshoot" },
+      "heater_lag": { "name": "Geleerde reactietijd verwarming" },
+      "learning_progress": { "name": "Leervoortgang" }
+    }
+  },
+  "services": {
+    "set_ready_by": {
+      "name": "Klaar-om-tijd instellen",
+      "description": "Voorverwarmen zodat de kamer op het opgegeven tijdstip de temperatuur heeft, op basis van de geleerde opwarmtijd.",
+      "fields": {
+        "time": { "name": "Tijd", "description": "Tijdstip (eerstvolgende keer) waarop de kamer warm moet zijn." },
+        "temperature": { "name": "Temperatuur", "description": "Te bereiken temperatuur. Standaard de huidige doeltemperatuur." }
+      }
+    },
+    "clear_ready_by": {
+      "name": "Klaar-om-tijd wissen",
+      "description": "Annuleer een geplande voorverwarming."
+    },
+    "reset_learning": {
+      "name": "Leren resetten",
+      "description": "Vergeet alles wat over de kamer geleerd is en begin opnieuw."
+    }
+  }
+}

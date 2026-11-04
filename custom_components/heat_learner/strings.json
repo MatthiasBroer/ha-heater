@@ -1,0 +1,64 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Heat Learner",
+        "description": "Pick the room's temperature sensor and the switch that powers the electric heater.",
+        "data": {
+          "name": "Name",
+          "temperature_sensor": "Room temperature sensor",
+          "heater_switch": "Heater switch",
+          "outdoor_sensor": "Outdoor temperature sensor (optional, improves learning)",
+          "window_sensor": "Window/door sensor (optional, heater stays off while open)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This heater is already used by a Heat Learner."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Heat Learner options",
+        "data": {
+          "hysteresis": "Hysteresis (heater switches on this far below the target)",
+          "min_on_minutes": "Minimum on time",
+          "min_off_minutes": "Minimum off time",
+          "eco_temperature": "Eco temperature",
+          "min_temperature": "Minimum target",
+          "max_temperature": "Maximum target"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "heating_rate": { "name": "Heating rate" },
+      "cooling_rate": { "name": "Cooling rate" },
+      "time_to_target": { "name": "Time to reach target" },
+      "max_reachable": { "name": "Maximum reachable temperature" },
+      "overshoot": { "name": "Learned overshoot" },
+      "heater_lag": { "name": "Learned heater response time" },
+      "learning_progress": { "name": "Learning progress" }
+    }
+  },
+  "services": {
+    "set_ready_by": {
+      "name": "Set ready-by time",
+      "description": "Preheat so the room reaches the temperature at the given time, using the learned heat-up time.",
+      "fields": {
+        "time": { "name": "Time", "description": "Time of day (next occurrence) the room should be warm." },
+        "temperature": { "name": "Temperature", "description": "Temperature to reach. Defaults to the current target." }
+      }
+    },
+    "clear_ready_by": {
+      "name": "Clear ready-by time",
+      "description": "Cancel a pending preheat."
+    },
+    "reset_learning": {
+      "name": "Reset learning",
+      "description": "Forget everything learned about the room and start over."
+    }
+  }
+}
