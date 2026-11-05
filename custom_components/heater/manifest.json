@@ -1,7 +1,7 @@
 {
   "domain": "heater",
   "name": "Heater",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "documentation": "https://github.com/MatthiasBroer/ha-heater",
   "issue_tracker": "https://github.com/MatthiasBroer/ha-heater/issues",
   "codeowners": [],
