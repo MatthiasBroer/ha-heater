@@ -56,6 +56,7 @@ from .const import (
 )
 from .controller import ControllerConfig, OnOffController
 from .learner import Learner
+from .schedule import active_period, next_period
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -92,6 +93,7 @@ class HeatLearnerManager:
         self.preset: str = PRESET_NONE
         self.ready_by: datetime | None = None
         self.ready_target: float | None = None
+        self._schedule_ready_key: tuple | None = None
 
         # live values
         self.current_temp: float | None = None
@@ -273,21 +275,78 @@ class HeatLearnerManager:
         return min(hours * 3600 * READY_MARGIN + READY_EXTRA_S, READY_MAX_LEAD_S)
 
     def _update_schedule(self, now: datetime) -> float:
-        base = self.eco_temp if self.preset == PRESET_ECO else self.target
+        """Select the scheduled target and reuse ready-by preheating."""
+        entries = list(self.entry.options.get("schedule", []))
+        local_now = dt_util.as_local(now)
+
+        # A scheduled comfort period always overrides the eco/base target.
+        period = active_period(local_now, entries) if entries else None
+
+        if period is not None:
+            # Do not leave a scheduled ready-by request behind after arrival.
+            if self._schedule_ready_key is not None:
+                self._clear_ready()
+                self._schedule_ready_key = None
+
+            return float(period["temperature"])
+
+        # Outside a comfort period, use eco temperature.
+        base = self.eco_temp
+
+        if not entries:
+            # Preserve the original manual ready-by feature when scheduling
+            # is not configured.
+            if self._schedule_ready_key is not None:
+                self._clear_ready()
+                self._schedule_ready_key = None
+
+            base = self.eco_temp if self.preset == PRESET_ECO else self.target
+
+        else:
+            upcoming = next_period(local_now, entries)
+
+            if upcoming is not None:
+                start, entry = upcoming
+                key = (
+                    start.date().isoformat(),
+                    start.strftime("%H:%M:%S"),
+                    tuple(entry["days"]),
+                    float(entry["temperature"]),
+                )
+
+                # Only replace ready-by when the upcoming scheduled period
+                # changes. Do not reset the preheat latch on every tick.
+                if key != self._schedule_ready_key:
+                    self.ready_by = dt_util.as_utc(start)
+                    self.ready_target = float(entry["temperature"])
+                    self.ready_start = None
+                    self._ready_started = False
+                    self._schedule_ready_key = key
+
         if self.ready_by is None:
             return base
-        goal = self.ready_target if self.ready_target is not None else self.target
+
+        goal = (
+            self.ready_target
+            if self.ready_target is not None
+            else self.target
+        )
+
         if now >= self.ready_by:
-            # arrived: the ready-by temperature becomes the new comfort target
-            self.target, self.preset = goal, PRESET_NONE
+            self.target = goal
+            self.preset = PRESET_NONE
             self._clear_ready()
+            self._schedule_ready_key = None
             self._request_save()
             return goal
+
         if not self._ready_started:
             lead = self._lead_time_s(goal)
             self.ready_start = self.ready_by - timedelta(seconds=lead)
+
             if now >= self.ready_start:
-                self._ready_started = True  # latch: no flapping once preheating began
+                self._ready_started = True
+
         return goal if self._ready_started else base
 
     def _clear_ready(self) -> None:
