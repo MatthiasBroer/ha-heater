@@ -1,12 +1,11 @@
 """Config + options flow for Heat Learner."""
 from __future__ import annotations
 
+from datetime import time
 from typing import Any
 
 import voluptuous as vol
-from datetime import time
 
-from homeassistant.helpers import selector
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.const import CONF_NAME
 from homeassistant.core import callback
@@ -22,6 +21,7 @@ from .const import (
     CONF_MIN_ON,
     CONF_MIN_TEMP,
     CONF_OUTDOOR_SENSOR,
+    CONF_REFERENCE_CLIMATE,
     CONF_TEMP_SENSOR,
     CONF_WINDOW_SENSOR,
     DEFAULT_ECO_TEMP,
@@ -87,7 +87,6 @@ class HeatLearnerConfigFlow(ConfigFlow, domain=DOMAIN):
         return HeatLearnerOptionsFlow()
 
 
-
 class HeatLearnerOptionsFlow(OptionsFlow):
     """Configure Heat Learner settings and weekly schedule."""
 
@@ -101,19 +100,16 @@ class HeatLearnerOptionsFlow(OptionsFlow):
             menu_options.append("remove_period")
         menu_options.append("finish")
 
-        return self.async_show_menu(
-            step_id="init",
-            menu_options=menu_options,
-        )
+        return self.async_show_menu(step_id="init", menu_options=menu_options)
 
     async def async_step_settings(self, user_input=None):
-        """Edit existing thermostat settings."""
+        """Edit thermostat settings and optional reference climate device."""
         cur = {**self.config_entry.data, **self._options}
 
         def default(key, fallback):
             return cur.get(key, fallback)
 
-        schema = vol.Schema({
+        schema_fields = {
             vol.Optional(
                 CONF_HYSTERESIS,
                 default=default(CONF_HYSTERESIS, DEFAULT_HYSTERESIS),
@@ -138,41 +134,50 @@ class HeatLearnerOptionsFlow(OptionsFlow):
                 CONF_MAX_TEMP,
                 default=default(CONF_MAX_TEMP, DEFAULT_MAX_TEMP),
             ): _number(15, 35, 0.5, "°C"),
-        })
+        }
+        reference_key = (
+            vol.Optional(CONF_REFERENCE_CLIMATE, default=cur[CONF_REFERENCE_CLIMATE])
+            if cur.get(CONF_REFERENCE_CLIMATE)
+            else vol.Optional(CONF_REFERENCE_CLIMATE)
+        )
+        schema_fields[reference_key] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="climate")
+        )
+
+        schema = vol.Schema(schema_fields)
 
         if user_input is not None:
             self._options.update(user_input)
+            # An empty selector value means the external device was cleared.
+            if not user_input.get(CONF_REFERENCE_CLIMATE):
+                self._options.pop(CONF_REFERENCE_CLIMATE, None)
             return await self.async_step_init()
 
-        return self.async_show_form(
-            step_id="settings",
-            data_schema=schema,
-        )
+        return self.async_show_form(step_id="settings", data_schema=schema)
 
     async def async_step_add_period(self, user_input=None):
         """Add one or more weekday periods."""
         days = [
             {"label": label, "value": str(number)}
-            for number, label in enumerate([
-                "Monday", "Tuesday", "Wednesday", "Thursday",
-                "Friday", "Saturday", "Sunday",
-            ])
+            for number, label in enumerate(
+                ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            )
         ]
 
-        schema = vol.Schema({
-            vol.Required("days"): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=days,
-                    multiple=True,
-                    mode=selector.SelectSelectorMode.LIST,
-                )
-            ),
-            vol.Required("start"): selector.TimeSelector(),
-            vol.Required("end"): selector.TimeSelector(),
-            vol.Required("temperature", default=20.0): _number(
-                5, 35, 0.5, "°C"
-            ),
-        })
+        schema = vol.Schema(
+            {
+                vol.Required("days"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=days,
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+                vol.Required("start"): selector.TimeSelector(),
+                vol.Required("end"): selector.TimeSelector(),
+                vol.Required("temperature", default=20.0): _number(5, 35, 0.5, "°C"),
+            }
+        )
 
         if user_input is not None:
             start = time.fromisoformat(str(user_input["start"]))
@@ -180,16 +185,12 @@ class HeatLearnerOptionsFlow(OptionsFlow):
 
             if not user_input["days"]:
                 return self.async_show_form(
-                    step_id="add_period",
-                    data_schema=schema,
-                    errors={"days": "required"},
+                    step_id="add_period", data_schema=schema, errors={"days": "required"}
                 )
 
             if end <= start:
                 return self.async_show_form(
-                    step_id="add_period",
-                    data_schema=schema,
-                    errors={"end": "invalid_period"},
+                    step_id="add_period", data_schema=schema, errors={"end": "invalid_period"}
                 )
 
             period = {
@@ -200,36 +201,27 @@ class HeatLearnerOptionsFlow(OptionsFlow):
             }
 
             schedule = list(self._options.get("schedule", []))
-
-            # Reject overlapping periods on any shared weekday.
             for existing in schedule:
                 if not set(period["days"]) & set(existing["days"]):
                     continue
-
                 overlaps = (
                     start < time.fromisoformat(existing["end"])
                     and time.fromisoformat(existing["start"]) < end
                 )
                 if overlaps:
                     return self.async_show_form(
-                        step_id="add_period",
-                        data_schema=schema,
-                        errors={"base": "overlap"},
+                        step_id="add_period", data_schema=schema, errors={"base": "overlap"}
                     )
 
             schedule.append(period)
             self._options["schedule"] = schedule
             return await self.async_step_init()
 
-        return self.async_show_form(
-            step_id="add_period",
-            data_schema=schema,
-        )
+        return self.async_show_form(step_id="add_period", data_schema=schema)
 
     async def async_step_remove_period(self, user_input=None):
         """Remove a previously configured period."""
         schedule = list(self._options.get("schedule", []))
-
         if not schedule:
             return await self.async_step_init()
 
@@ -247,30 +239,22 @@ class HeatLearnerOptionsFlow(OptionsFlow):
                 for day in entry["days"]
             ]
             label = (
-                f"{', '.join(day_names)} "
-                f"{entry['start'][:5]}–{entry['end'][:5]} "
+                f"{', '.join(day_names)} {entry['start'][:5]}–{entry['end'][:5]} "
                 f"({entry['temperature']} °C)"
             )
             options.append({"label": label, "value": str(index)})
 
-        schema = vol.Schema({
-            vol.Required("period"): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=options,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+        schema = vol.Schema(
+            {
+                vol.Required("period"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=options, mode=selector.SelectSelectorMode.DROPDOWN
+                    )
                 )
-            )
-        })
-
-        return self.async_show_form(
-            step_id="remove_period",
-            data_schema=schema,
+            }
         )
+        return self.async_show_form(step_id="remove_period", data_schema=schema)
 
     async def async_step_finish(self, user_input=None):
         """Save options and reload the integration."""
-        return self.async_create_entry(
-            title="",
-            data=self._options,
-        )
-
+        return self.async_create_entry(title="", data=self._options)

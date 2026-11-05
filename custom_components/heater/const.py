@@ -1,4 +1,4 @@
-"""Constants for Heater."""
+"""Constants for Heat Learner."""
 from __future__ import annotations
 
 DOMAIN = "heater"
@@ -7,6 +7,7 @@ CONF_TEMP_SENSOR = "temperature_sensor"
 CONF_HEATER = "heater_switch"
 CONF_OUTDOOR_SENSOR = "outdoor_sensor"
 CONF_WINDOW_SENSOR = "window_sensor"
+CONF_REFERENCE_CLIMATE = "reference_climate"
 
 CONF_HYSTERESIS = "hysteresis"
 CONF_MIN_ON = "min_on_minutes"
