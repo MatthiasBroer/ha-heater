@@ -78,7 +78,19 @@
       "max_reachable": { "name": "Maximaal haalbare temperatuur" },
       "overshoot": { "name": "Geleerde overshoot" },
       "heater_lag": { "name": "Geleerde reactietijd verwarming" },
-      "learning_progress": { "name": "Leervoortgang" }
+      "learning_progress": { "name": "Leervoortgang" },
+      "status": {
+        "name": "Status",
+        "state": {
+          "off": "Uit",
+          "sensor_unavailable": "Temperatuursensor niet beschikbaar",
+          "window_open": "Gepauzeerd: raam open",
+          "heating": "Verwarmen",
+          "preheating": "Voorverwarmen",
+          "waiting_min_time": "Wachten (minimale aan/uit-tijd)",
+          "idle": "Rust: op temperatuur"
+        }
+      }
     }
   },
   "services": {

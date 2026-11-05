@@ -1,9 +1,10 @@
 """Sensors exposing what Heat Learner has learned about the room."""
 from __future__ import annotations
-
+from typing import Any
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from homeassistant.util import dt as dt_util
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -21,10 +22,20 @@ from . import HeatLearnerConfigEntry
 from .const import DOMAIN
 from .manager import HeatLearnerManager
 
+STATUS_OPTIONS = [
+    "off",
+    "sensor_unavailable",
+    "window_open",
+    "heating",
+    "preheating",
+    "waiting_min_time",
+    "idle",
+]
 
 @dataclass(frozen=True, kw_only=True)
 class HeatLearnerSensorDescription(SensorEntityDescription):
-    value_fn: Callable[[HeatLearnerManager], float | None]
+    value_fn: Callable[[HeatLearnerManager], float | str | None]
+    attrs_fn: Callable[[HeatLearnerManager], dict[str, Any]] | None = None
 
 
 SENSORS: tuple[HeatLearnerSensorDescription, ...] = (
@@ -91,6 +102,21 @@ SENSORS: tuple[HeatLearnerSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda m: m.learning_progress,
     ),
+    HeatLearnerSensorDescription(
+        key="status",
+        translation_key="status",
+        device_class=SensorDeviceClass.ENUM,
+        options=STATUS_OPTIONS,
+        icon="mdi:thermostat-auto",
+        value_fn=lambda m: m.status,
+        attrs_fn=lambda m: {
+            "target_source": m.target_source,
+            "target_until": (
+                dt_util.as_local(m.target_until).isoformat() if m.target_until else None
+            ),
+            "effective_target": m.effective_target,
+        },
+    ),
 )
 
 
@@ -134,3 +160,8 @@ class HeatLearnerSensor(SensorEntity):
     @property
     def native_value(self) -> float | None:
         return self.entity_description.value_fn(self._m)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        fn = self.entity_description.attrs_fn
+        return fn(self._m) if fn else None

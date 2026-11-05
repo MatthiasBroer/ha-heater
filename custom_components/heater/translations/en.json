@@ -78,7 +78,19 @@
       "max_reachable": { "name": "Maximum reachable temperature" },
       "overshoot": { "name": "Learned overshoot" },
       "heater_lag": { "name": "Learned heater response time" },
-      "learning_progress": { "name": "Learning progress" }
+      "learning_progress": { "name": "Learning progress" },
+      "status": {
+        "name": "Status",
+        "state": {
+          "off": "Off",
+          "sensor_unavailable": "Temperature sensor unavailable",
+          "window_open": "Paused: window open",
+          "heating": "Heating",
+          "preheating": "Preheating",
+          "waiting_min_time": "Waiting (minimum on/off time)",
+          "idle": "Idle: at target"
+        }
+      }
     }
   },
   "services": {

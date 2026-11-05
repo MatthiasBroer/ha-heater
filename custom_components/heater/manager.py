@@ -117,6 +117,10 @@ class HeatLearnerManager:
         self._unsub: list[CALLBACK_TYPE] = []
         self._start_ts: float = 0.0
         self.signal = f"{DOMAIN}_update_{entry.entry_id}"
+        
+        self.target_source: str = "manual"
+        self.target_until: datetime | None = None
+        self._holding: bool = False  # controller wants a change but min on/off time blocks it
 
     # ------------------------------------------------------------------ setup
     async def async_start(self) -> None:
@@ -323,6 +327,8 @@ class HeatLearnerManager:
             self._request_save()
 
         self.effective_target = self._update_schedule(now)
+        self.target_source, self.target_until = self._explain_target(now)
+        self._holding = False
 
         if self.hvac_mode == HVACMode.HEAT:
             await self._async_control(ts, temp)
@@ -345,6 +351,10 @@ class HeatLearnerManager:
             return
 
         want = self.controller.decide(temp, self.effective_target, self.heater_on, ts)
+        # Did the controller *want* to change but was held back by min on/off time?
+        on_thr, off_thr = self.controller.thresholds(self.effective_target)
+        raw = True if temp <= on_thr else False if temp >= off_thr else self.heater_on
+        self._holding = raw != self.heater_on and want == self.heater_on
         if want != self.heater_on:
             await self._set_heater(want, ts)
         self.controller.observe(temp, self.heater_on, ts)
@@ -374,6 +384,36 @@ class HeatLearnerManager:
         if hours <= 0:
             return 0.0
         return min(hours * 3600 * READY_MARGIN + READY_EXTRA_S, READY_MAX_LEAD_S)
+    
+    def _explain_target(self, now: datetime) -> tuple[str, datetime | None]:
+        """Describe where the current target comes from, and until when."""
+        local_now = dt_util.as_local(now)
+        entries = list(self.entry.options.get("schedule", []))
+
+        if (
+            self._manual_override_until is not None
+            and self._manual_override_target is not None
+            and local_now < self._manual_override_until
+        ):
+            return "manual_override", self._manual_override_until
+
+        period = active_period(local_now, entries) if entries else None
+        if period is not None:
+            end = datetime.combine(
+                local_now.date(),
+                time.fromisoformat(period["end"]),
+                tzinfo=local_now.tzinfo,
+            )
+            return "schedule", end
+
+        if self.ready_by is not None:
+            if self._ready_started:
+                return "preheat", self.ready_by
+            return "waiting_preheat", self.ready_start
+
+        if self.preset == PRESET_ECO:
+            return "eco", None
+        return "manual", None
 
     def _update_schedule(self, now: datetime) -> float:
         """Select scheduled target, manual override, and preheat behavior."""
@@ -559,3 +599,17 @@ class HeatLearnerManager:
     @property
     def heater_lag_min(self) -> float:
         return self.learner.heater_lag_s / 60
+    
+    @property
+    def status(self) -> str:
+        if self.hvac_mode == HVACMode.OFF:
+            return "off"
+        if self.current_temp is None:
+            return "sensor_unavailable"
+        if self.window_open:
+            return "window_open"
+        if self.heater_on:
+            return "preheating" if self.target_source == "preheat" else "heating"
+        if self._holding:
+            return "waiting_min_time"
+        return "idle"

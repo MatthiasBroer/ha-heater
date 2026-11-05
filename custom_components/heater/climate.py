@@ -139,6 +139,9 @@ class HeatLearnerClimate(ClimateEntity):
             "learning_progress": m.learning_progress,
             "learned_coast": round(m.coast, 2),
             "learned_heater_lag_min": m.heater_lag_min,
+            "status": m.status,
+            "target_source": m.target_source,
+            "target_until": m.target_until.isoformat() if m.target_until else None,
         }
 
     # ---- commands
