@@ -21,15 +21,53 @@
     "step": {
       "init": {
         "title": "Heat Learner opties",
+        "menu_options": {
+          "settings": "Thermostaatinstellingen",
+          "add_period": "Schemaperiode toevoegen",
+          "remove_period": "Schemaperiode verwijderen",
+          "finish": "Opslaan en sluiten"
+        }
+      },
+      "settings": {
+        "title": "Thermostaatinstellingen",
         "data": {
-          "hysteresis": "Hysterese (verwarming gaat aan zoveel onder de doeltemperatuur)",
+          "hysteresis": "Hysterese",
           "min_on_minutes": "Minimale aan-tijd",
           "min_off_minutes": "Minimale uit-tijd",
           "eco_temperature": "Eco-temperatuur",
           "min_temperature": "Minimale doeltemperatuur",
-          "max_temperature": "Maximale doeltemperatuur"
+          "max_temperature": "Maximale doeltemperatuur",
+          "reference_climate": "Externe fysieke klimaatregelaar (optioneel)"
+        },
+        "data_description": {
+          "hysteresis": "De verwarming gaat aan zoveel onder de doeltemperatuur.",
+          "reference_climate": "Volg wijzigingen van de doeltemperatuur op dit klimaatapparaat. Heat Learner bedient het externe apparaat niet."
+        }
+      },
+      "add_period": {
+        "title": "Weekschema-periode toevoegen",
+        "description": "Kies de dagen, de start- en eindtijd van de comfortperiode en de doeltemperatuur.",
+        "data": {
+          "days": "Dagen van de week",
+          "start": "Starttijd comfort",
+          "end": "Eindtijd comfort",
+          "temperature": "Doeltemperatuur"
+        },
+        "data_description": {
+          "days": "Selecteer een of meer weekdagen."
+        }
+      },
+      "remove_period": {
+        "title": "Schemaperiode verwijderen",
+        "data": {
+          "period": "Te verwijderen periode"
         }
       }
+    },
+    "error": {
+      "required": "Selecteer minstens één dag.",
+      "invalid_period": "De eindtijd moet later zijn dan de starttijd.",
+      "overlap": "Deze periode overlapt met een bestaande periode op een of meer geselecteerde dagen."
     }
   },
   "entity": {

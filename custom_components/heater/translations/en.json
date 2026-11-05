@@ -21,15 +21,53 @@
     "step": {
       "init": {
         "title": "Heat Learner options",
+        "menu_options": {
+          "settings": "Thermostat settings",
+          "add_period": "Add schedule period",
+          "remove_period": "Remove schedule period",
+          "finish": "Save and close"
+        }
+      },
+      "settings": {
+        "title": "Thermostat settings",
         "data": {
-          "hysteresis": "Hysteresis (heater switches on this far below the target)",
+          "hysteresis": "Hysteresis",
           "min_on_minutes": "Minimum on time",
           "min_off_minutes": "Minimum off time",
           "eco_temperature": "Eco temperature",
           "min_temperature": "Minimum target",
-          "max_temperature": "Maximum target"
+          "max_temperature": "Maximum target",
+          "reference_climate": "External physical climate device (optional)"
+        },
+        "data_description": {
+          "hysteresis": "The heater switches on this far below the target temperature.",
+          "reference_climate": "Follow target-temperature changes made on this climate device. Heat Learner will not control the external device."
+        }
+      },
+      "add_period": {
+        "title": "Add weekly schedule period",
+        "description": "Choose the days, comfort start and end times, and target temperature.",
+        "data": {
+          "days": "Days of the week",
+          "start": "Comfort start time",
+          "end": "Comfort end time",
+          "temperature": "Target temperature"
+        },
+        "data_description": {
+          "days": "Select one or more weekdays."
+        }
+      },
+      "remove_period": {
+        "title": "Remove schedule period",
+        "data": {
+          "period": "Period to remove"
         }
       }
+    },
+    "error": {
+      "required": "Select at least one day.",
+      "invalid_period": "The end time must be later than the start time.",
+      "overlap": "This period overlaps an existing period on one or more selected days."
     }
   },
   "entity": {
