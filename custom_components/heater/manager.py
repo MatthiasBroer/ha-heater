@@ -6,7 +6,7 @@ controller, switches the heater and tells the entities to refresh.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from typing import Any
 
 from homeassistant.components.climate import PRESET_ECO, PRESET_NONE, HVACMode
@@ -94,7 +94,10 @@ class HeatLearnerManager:
         self.ready_by: datetime | None = None
         self.ready_target: float | None = None
         self._schedule_ready_key: tuple | None = None
-
+        # Temporary manual override during an active schedule period
+        self._manual_override_until: datetime | None = None
+        self._manual_override_target: float | None = None
+        
         # live values
         self.current_temp: float | None = None
         self.outdoor_temp: float | None = None
@@ -151,6 +154,12 @@ class HeatLearnerManager:
             "ready_target": self.ready_target,
             "learner": self.learner.to_dict(),
             "controller": self.controller.to_dict(),
+            "manual_override_until": (
+                self._manual_override_until.isoformat()
+                if self._manual_override_until
+                else None
+            ),
+            "manual_override_target": self._manual_override_target,
         }
 
     def _restore(self, data: dict[str, Any]) -> None:
@@ -158,6 +167,13 @@ class HeatLearnerManager:
             self.hvac_mode = HVACMode(data.get("hvac_mode", HVACMode.OFF))
             self.target = float(data.get("target", DEFAULT_TARGET))
             self.preset = data.get("preset", PRESET_NONE)
+            if data.get("manual_override_until"):
+                self._manual_override_until = dt_util.parse_datetime(
+                    data["manual_override_until"]
+                )
+                self._manual_override_target = data.get(
+                    "manual_override_target"
+                )
             if data.get("ready_by"):
                 self.ready_by = dt_util.parse_datetime(data["ready_by"])
                 self.ready_target = data.get("ready_target")
@@ -279,6 +295,16 @@ class HeatLearnerManager:
         entries = list(self.entry.options.get("schedule", []))
         local_now = dt_util.as_local(now)
 
+        # Keep a manual target until the current scheduled period ends.
+        if self._manual_override_until is not None:
+            if local_now < self._manual_override_until:
+                if self._manual_override_target is not None:
+                    return self._manual_override_target
+            else:
+                self._manual_override_until = None
+                self._manual_override_target = None
+                self._request_save()
+
         # A scheduled comfort period always overrides the eco/base target.
         period = active_period(local_now, entries) if entries else None
 
@@ -359,6 +385,23 @@ class HeatLearnerManager:
     async def async_set_target(self, temp: float) -> None:
         self.target = min(max(temp, self.min_temp), self.max_temp)
         self.preset = PRESET_NONE
+
+        # If the user changes the temperature during an active
+        # comfort period, override the schedule until that period ends.
+        entries = list(self.entry.options.get("schedule", []))
+        local_now = dt_util.as_local(dt_util.utcnow())
+        period = active_period(local_now, entries) if entries else None
+
+        if period is not None:
+            end_time = time.fromisoformat(period["end"])
+
+            self._manual_override_until = datetime.combine(
+                local_now.date(),
+                end_time,
+                tzinfo=local_now.tzinfo,
+            )
+            self._manual_override_target = self.target
+
         await self._after_user_change()
 
     async def async_set_mode(self, mode: HVACMode) -> None:

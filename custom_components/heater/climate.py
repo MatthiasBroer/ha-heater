@@ -101,7 +101,7 @@ class HeatLearnerClimate(ClimateEntity):
 
     @property
     def target_temperature(self) -> float:
-        return self._m.target
+        return self._m.effective_target
 
     @property
     def min_temp(self) -> float:
