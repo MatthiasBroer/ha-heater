@@ -91,7 +91,7 @@ class HeatLearnerConfigFlow(ConfigFlow, domain=DOMAIN):
 class HeatLearnerOptionsFlow(OptionsFlow):
     """Configure Heat Learner settings and weekly schedule."""
 
-    def async_step_init(self, user_input=None):
+    async def async_step_init(self, user_input=None):
         """Show the configuration menu."""
         if not hasattr(self, "_options"):
             self._options = dict(self.config_entry.options)
